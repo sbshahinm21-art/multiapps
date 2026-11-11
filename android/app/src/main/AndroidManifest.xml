@@ -19,6 +19,7 @@
 
     <application
         android:name=".MultiAppsApp"
+        android:crossProfile="true"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
