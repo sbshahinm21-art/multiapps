@@ -29,3 +29,4 @@ for D1, R2 and static assets. **Not yet run on real Cloudflare** — the first r
 | POST | `/api/v1/beta/join`, `/api/v1/beta/leave` | Beta program |
 | POST/GET | `/api/v1/support/tickets`, `/api/v1/support/tickets/:id` | Support |
 | GET | `/download/latest`, `/download/release/:id` | APK downloads (resumable) |
+"# multiapps" 
