@@ -84,7 +84,7 @@ fun ProxyListScreen(onBack: () -> Unit, onEdit: (Long) -> Unit) {
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
-                Text("Proxies are assigned to clones in each clone's settings. Routing clone traffic through them arrives with the clone engine.",
+                Text("Proxies are assigned to clones in each clone's settings. Sending clone traffic through them arrives in the next update.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (proxies.isEmpty()) item {

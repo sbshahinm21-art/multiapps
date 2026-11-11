@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Multi Apps only manages its own work profile for clones. It asks for no device policies. -->
+<device-admin>
+    <uses-policies />
+</device-admin>

@@ -61,8 +61,9 @@ import kotlinx.coroutines.launch
 
 private val FAQ = listOf(
     "How do I create a clone?" to "On the home screen tap “Add clone”, choose an app and give the clone a name. Long-press a clone to change its name, color, proxy and notifications.",
-    "Why can't I open my clones yet?" to "This version sets up clones, proxies, backup and updates. The clone engine that actually runs the cloned apps arrives in the next update. Everything you set up now is kept.",
-    "How do proxies work?" to "Add a SOCKS5 or HTTP proxy under Proxies (lock icon) and tap Test to check it. Then assign it to a clone in the clone's settings. When you open a clone you choose “No proxy” or “Its own proxy”.",
+    "How do clones work?" to "Settings → Clone engine → Set up. Android creates a private work profile. Each clone is a full copy of the app inside it, with its own login and data. You can have one clone of each app. Clones show a small briefcase badge.",
+    "My clone does not open" to "Check that “Work apps” is turned on in quick settings. If you see “not installed”, open the clone and tap Open again: Multi Apps will install it into the work profile.",
+    "How do proxies work?" to "Add a SOCKS5 or HTTP proxy under Proxies (lock icon) and tap Test to check it. Then assign it to a clone in the clone's settings. When you open a clone you choose “No proxy” or “Its own proxy”. Sending clone traffic through the proxy arrives in the next update.",
     "How do I back up my setup?" to "Settings → Backup. Choose a password of at least 8 characters. The backup file contains your clones, proxies (with passwords) and settings, encrypted. Without the password it cannot be restored.",
     "How do updates work?" to "Multi Apps checks for updates by itself and asks before installing. The first time, Android asks you to allow installs from Multi Apps.",
     "Where is my Device ID?" to "Settings → About → Device ID. Tap it to copy. Support may ask for it.",

@@ -44,6 +44,11 @@ class Prefs(context: Context) {
         get() = sp.getLong("pending_version_code", 0L)
         set(v) = sp.edit { putLong("pending_version_code", v) }
 
+    /** Set after the copy of Multi Apps inside the work profile answered a test command. */
+    var engineReady: Boolean
+        get() = sp.getBoolean("engine_ready", false)
+        set(v) = sp.edit { putBoolean("engine_ready", v) }
+
     var dismissedUpdateVersion: Long
         get() = sp.getLong("dismissed_update", 0L)
         set(v) = sp.edit { putLong("dismissed_update", v) }

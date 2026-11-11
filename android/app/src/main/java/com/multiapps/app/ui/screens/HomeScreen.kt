@@ -39,7 +39,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +53,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.multiapps.app.data.CloneEntity
 import com.multiapps.app.data.ProxyEntity
+import com.multiapps.app.engine.EngineStatus
+import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.engineStatus
+import com.multiapps.app.engine.rememberProfileCommand
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import com.multiapps.app.ui.CloneIcon
 import com.multiapps.app.ui.appContainer
 import com.multiapps.app.ui.theme.Warn
@@ -69,6 +79,10 @@ fun HomeScreen(
     val config by c.remoteConfig.config.collectAsState()
     val withdrawn by c.updates.currentWithdrawn.collectAsState()
     var launching by remember { mutableStateOf<CloneEntity?>(null) }
+    val context = LocalContext.current
+    var resumeTick by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumeTick++ }
+    val engine = remember(resumeTick) { engineStatus(context) }
 
     Scaffold(
         topBar = {
@@ -101,6 +115,14 @@ fun HomeScreen(
         ) {
             if (withdrawn) item(span = { GridItemSpan(maxLineSpan) }) {
                 Banner("This version was withdrawn. A fixed version is coming — you will be asked to update.", Warn)
+            }
+            if (engine == EngineStatus.NOT_SET_UP || engine == EngineStatus.WAITING) item(span = { GridItemSpan(maxLineSpan) }) {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Set up the clone engine to open your clones.", style = MaterialTheme.typography.bodyMedium)
+                        TextButton(onClick = onSettings) { Text("Open Settings") }
+                    }
+                }
             }
             if (config.announcement.isNotBlank()) item(span = { GridItemSpan(maxLineSpan) }) {
                 Banner(config.announcement, MaterialTheme.colorScheme.primary)
@@ -138,20 +160,57 @@ private fun Banner(text: String, color: androidx.compose.ui.graphics.Color) {
     }
 }
 
-/** Asks "No proxy" or "Its own proxy" before opening a clone, as configured per clone. */
+/**
+ * Asks "No proxy" or "Its own proxy" (if the clone is set to ask), then opens the clone in the work profile.
+ * Proxy routing arrives with the VPN engine; until then the clone opens without proxy and the dialog says so.
+ */
 @Composable
 private fun LaunchDialog(clone: CloneEntity, proxies: List<ProxyEntity>, onDismiss: () -> Unit, onSettings: () -> Unit) {
+    val context = LocalContext.current
+    val c = appContainer()
+    val scope = rememberCoroutineScope()
     val own = proxies.firstOrNull { it.id == clone.proxyId }
     var useProxy by remember { mutableStateOf(own != null) }
-    var notReady by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val status = remember { engineStatus(context) }
+    val installed = remember { WorkProfile.isInstalledInProfile(context, clone.packageName) }
+
+    val command = rememberProfileCommand { r ->
+        busy = false
+        if (r.ok) {
+            scope.launch { c.db.clones().update(clone.copy(engine = CloneEntity.ENGINE_WORK_PROFILE)) }
+            message = WorkProfile.launch(context, clone.packageName)
+            if (message == null) onDismiss()
+        } else message = r.message
+    }
+
+    fun open() {
+        if (status != EngineStatus.READY && !installed) {
+            message = "Set up the clone engine first: Settings → Clone engine."
+            return
+        }
+        if (useProxy && own != null) {
+            message = "Proxy routing for clones arrives in the next update. For now the clone opens without a proxy."
+            useProxy = false
+            return
+        }
+        if (installed) {
+            if (clone.engine != CloneEntity.ENGINE_WORK_PROFILE) scope.launch { c.db.clones().update(clone.copy(engine = CloneEntity.ENGINE_WORK_PROFILE)) }
+            message = WorkProfile.launch(context, clone.packageName)
+            if (message == null) onDismiss()
+        } else {
+            busy = true
+            command(WorkProfile.commandIntent(WorkProfile.CMD_INSTALL, clone.packageName))
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(clone.name) },
         text = {
-            if (notReady) {
-                Text("Opening clones needs the clone engine, which arrives in the next update. Your clone and its settings are saved and will work as soon as you update.")
-            } else {
-                Column {
+            Column {
+                if (clone.askProxyOnLaunch) {
                     Text("Open with:", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(Modifier.fillMaxWidth().selectable(selected = !useProxy, onClick = { useProxy = false }).padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically) {
@@ -163,12 +222,14 @@ private fun LaunchDialog(clone: CloneEntity, proxies: List<ProxyEntity>, onDismi
                         Text(if (own != null) "Its own proxy (${own.name})" else "Its own proxy — none assigned yet")
                     }
                 }
+                if (!installed && status == EngineStatus.READY) {
+                    Text("This clone will be installed in the work profile first.", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp)) }
             }
         },
-        confirmButton = {
-            if (notReady) Button(onClick = onDismiss) { Text("OK") }
-            else Button(onClick = { notReady = true }) { Text("Open") }
-        },
-        dismissButton = { if (!notReady) TextButton(onClick = onSettings) { Text("Clone settings") } },
+        confirmButton = { Button(enabled = !busy, onClick = { open() }) { Text(if (busy) "Installing…" else "Open") } },
+        dismissButton = { TextButton(onClick = onSettings) { Text("Clone settings") } },
     )
 }

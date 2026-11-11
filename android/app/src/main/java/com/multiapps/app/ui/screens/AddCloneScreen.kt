@@ -34,6 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.multiapps.app.data.CloneEntity
+import com.multiapps.app.engine.EngineStatus
+import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.engineStatus
+import com.multiapps.app.engine.rememberProfileCommand
 import com.multiapps.app.ui.BackTopBar
 import com.multiapps.app.ui.CloneIcon
 import com.multiapps.app.ui.appContainer
@@ -95,35 +99,67 @@ fun AddCloneScreen(onBack: () -> Unit, onCreated: () -> Unit) {
         }
     }
 
+    // Sends "install" to the work profile; the clone is saved once the profile confirms.
+    var pendingClone by remember { mutableStateOf<CloneEntity?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val command = rememberProfileCommand { r ->
+        val clone = pendingClone
+        pendingClone = null
+        if (r.ok && clone != null) {
+            scope.launch { c.db.clones().insert(clone); picked = null; onCreated() }
+        } else {
+            error = r.message
+        }
+    }
+
     picked?.let { app ->
         var name by remember(app) { mutableStateOf("") }
         var saving by remember(app) { mutableStateOf(false) }
+        val engineReady = engineStatus(context) == EngineStatus.READY
         AlertDialog(
-            onDismissRequest = { picked = null },
+            onDismissRequest = { picked = null; error = null },
             title = { Text("New ${app.label} clone") },
             text = {
-                OutlinedTextField(value = name, onValueChange = { name = it.take(30) }, label = { Text("Clone name") },
-                    placeholder = { Text("e.g. ${app.label} Work") }, singleLine = true)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = name, onValueChange = { name = it.take(30) }, label = { Text("Clone name") },
+                        placeholder = { Text("e.g. ${app.label} Work") }, singleLine = true)
+                    if (!engineReady) Text("The clone engine is not set up yet. The clone is saved now; set up the engine in Settings to open it.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
             },
             confirmButton = {
-                Button(enabled = !saving, onClick = {
-                    saving = true
+                Button(enabled = !saving && pendingClone == null, onClick = {
+                    saving = true; error = null
                     scope.launch {
                         val count = c.db.clones().countFor(app.packageName)
                         val total = c.db.clones().all().size
-                        c.db.clones().insert(
-                            CloneEntity(
-                                packageName = app.packageName, appLabel = app.label,
-                                name = name.trim().ifBlank { "${app.label} ${count + 1}" },
-                                colorIndex = total % CloneColors.size,
-                            )
+                        val clone = CloneEntity(
+                            packageName = app.packageName, appLabel = app.label,
+                            name = name.trim().ifBlank { "${app.label} ${count + 1}" },
+                            colorIndex = total % CloneColors.size,
+                            engine = if (engineReady) CloneEntity.ENGINE_WORK_PROFILE else CloneEntity.ENGINE_NONE,
                         )
-                        picked = null
-                        onCreated()
+                        when {
+                            !engineReady -> { c.db.clones().insert(clone); picked = null; onCreated() }
+                            c.db.clones().countForEngine(app.packageName, CloneEntity.ENGINE_WORK_PROFILE) > 0 -> {
+                                error = "${app.label} already has a clone in the work profile. This engine allows one clone per app; more clones per app need the virtual engine (coming later)."
+                                saving = false
+                            }
+                            // Already in the profile (e.g. after a restore): just add it to the list.
+                            WorkProfile.isInstalledInProfile(context, app.packageName) -> {
+                                c.db.clones().insert(clone); picked = null; onCreated()
+                            }
+                            else -> {
+                                pendingClone = clone
+                                command(WorkProfile.commandIntent(WorkProfile.CMD_INSTALL, app.packageName))
+                                saving = false
+                            }
+                        }
                     }
-                }) { Text("Create") }
+                }) { Text(if (pendingClone != null) "Creating…" else "Create") }
             },
-            dismissButton = { TextButton(onClick = { picked = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { picked = null; error = null }) { Text("Cancel") } },
         )
     }
 }

@@ -5,6 +5,7 @@ import android.content.Context
 import com.multiapps.app.backup.BackupManager
 import com.multiapps.app.data.AppDatabase
 import com.multiapps.app.data.Prefs
+import com.multiapps.app.engine.WorkProfile
 import com.multiapps.app.net.Api
 import com.multiapps.app.net.RemoteConfigRepo
 import com.multiapps.app.update.UpdateManager
@@ -24,9 +25,15 @@ class MultiAppsApp : Application() {
     lateinit var container: AppContainer
         private set
 
+    /** True for the hidden copy of Multi Apps that runs inside the work profile. */
+    var inWorkProfile = false
+        private set
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        inWorkProfile = WorkProfile.isRunningInManagedProfile(this)
+        if (inWorkProfile) return // the profile copy only answers engine commands
         container.prefs.launchCount = container.prefs.launchCount + 1
         UpdateWorker.createChannel(this)
         UpdateWorker.schedule(this, container.remoteConfig.config.value.checkIntervalHours)

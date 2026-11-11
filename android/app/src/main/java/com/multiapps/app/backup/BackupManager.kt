@@ -41,7 +41,7 @@ class BackupManager(private val context: Context, private val db: AppDatabase, p
                     put(JSONObject().put("packageName", c.packageName).put("appLabel", c.appLabel).put("name", c.name)
                         .put("colorIndex", c.colorIndex).put("proxyId", c.proxyId ?: JSONObject.NULL)
                         .put("askProxyOnLaunch", c.askProxyOnLaunch).put("notificationsEnabled", c.notificationsEnabled)
-                        .put("notificationsMuted", c.notificationsMuted).put("createdAt", c.createdAt))
+                        .put("notificationsMuted", c.notificationsMuted).put("createdAt", c.createdAt).put("engine", c.engine))
                 }
             })
         val bytes = BackupCrypto.encrypt(json.toString().toByteArray(Charsets.UTF_8), password)
@@ -85,6 +85,8 @@ class BackupManager(private val context: Context, private val db: AppDatabase, p
                         notificationsEnabled = c.optBoolean("notificationsEnabled", true),
                         notificationsMuted = c.optBoolean("notificationsMuted", false),
                         createdAt = c.optLong("createdAt", System.currentTimeMillis()),
+                        // After a restore the clone must be installed again in this phone's work profile.
+                        engine = CloneEntity.ENGINE_NONE,
                     )
                 )
             }

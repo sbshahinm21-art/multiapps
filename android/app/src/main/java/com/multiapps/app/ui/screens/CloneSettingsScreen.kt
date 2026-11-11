@@ -43,6 +43,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.multiapps.app.data.CloneEntity
+import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.rememberProfileCommand
+import androidx.compose.ui.platform.LocalContext
 import com.multiapps.app.ui.BackTopBar
 import com.multiapps.app.ui.CloneIcon
 import com.multiapps.app.ui.SectionCard
@@ -60,6 +63,13 @@ fun CloneSettingsScreen(cloneId: Long, onBack: () -> Unit, onManageProxies: () -
     var edit by remember { mutableStateOf<CloneEntity?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     LaunchedEffect(stored) { if (edit == null && stored != null) edit = stored }
+    val context = LocalContext.current
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    // Removing a work-profile clone deletes the app copy and all its data inside the profile.
+    val command = rememberProfileCommand { r ->
+        val e = edit
+        if (r.ok && e != null) scope.launch { c.db.clones().delete(e); onBack() } else deleteError = r.message
+    }
 
     fun save(next: CloneEntity) { edit = next; scope.launch { c.db.clones().update(next) } }
 
@@ -120,10 +130,11 @@ fun CloneSettingsScreen(cloneId: Long, onBack: () -> Unit, onManageProxies: () -
             SectionCard("Notifications") {
                 SwitchRow("Show notifications", null, e.notificationsEnabled) { save(e.copy(notificationsEnabled = it)) }
                 SwitchRow("Silent (no sound or vibration)", null, e.notificationsMuted) { save(e.copy(notificationsMuted = it)) }
-                Text("These settings are saved now and apply once clones can run (next update).",
+                Text("Notification controls take effect with the next update. Until then the clone shows its notifications with a work badge.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
+            deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             OutlinedButton(
                 onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -135,10 +146,17 @@ fun CloneSettingsScreen(cloneId: Long, onBack: () -> Unit, onManageProxies: () -
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete this clone?") },
-            text = { Text("The clone and its settings will be removed from Multi Apps.") },
+            text = { Text("The clone, its settings and all its app data (accounts, messages, files) will be removed. The normal app on your phone is not affected.") },
             confirmButton = {
                 Button(
-                    onClick = { val e = edit; confirmDelete = false; if (e != null) scope.launch { c.db.clones().delete(e); onBack() } },
+                    onClick = {
+                        val e = edit; confirmDelete = false
+                        if (e != null) {
+                            if (WorkProfile.isInstalledInProfile(context, e.packageName)) {
+                                command(WorkProfile.commandIntent(WorkProfile.CMD_UNINSTALL, e.packageName))
+                            } else scope.launch { c.db.clones().delete(e); onBack() }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 ) { Text("Delete") }
             },

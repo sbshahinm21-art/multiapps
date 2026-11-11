@@ -1,6 +1,7 @@
 package com.multiapps.app.data
 
 import android.content.Context
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Delete
@@ -11,6 +12,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Update
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /** One clone of an installed app. */
@@ -28,7 +31,14 @@ data class CloneEntity(
     val notificationsEnabled: Boolean = true,
     val notificationsMuted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-)
+    /** Which engine runs this clone: "none" (not set up yet), "work_profile", later "virtual". */
+    @ColumnInfo(defaultValue = "none") val engine: String = ENGINE_NONE,
+) {
+    companion object {
+        const val ENGINE_NONE = "none"
+        const val ENGINE_WORK_PROFILE = "work_profile"
+    }
+}
 
 /** A SOCKS5 or HTTP proxy. The password is stored encrypted with the Android Keystore. */
 @Entity(tableName = "proxies")
@@ -56,6 +66,9 @@ interface CloneDao {
 
     @Query("SELECT COUNT(*) FROM clones WHERE packageName = :packageName")
     suspend fun countFor(packageName: String): Int
+
+    @Query("SELECT COUNT(*) FROM clones WHERE packageName = :packageName AND engine = :engine")
+    suspend fun countForEngine(packageName: String, engine: String): Int
 
     @Insert
     suspend fun insert(clone: CloneEntity): Long
@@ -97,13 +110,19 @@ interface ProxyDao {
     suspend fun deleteAll()
 }
 
-@Database(entities = [CloneEntity::class, ProxyEntity::class], version = 1, exportSchema = false)
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE clones ADD COLUMN engine TEXT NOT NULL DEFAULT 'none'")
+    }
+}
+
+@Database(entities = [CloneEntity::class, ProxyEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun clones(): CloneDao
     abstract fun proxies(): ProxyDao
 
     companion object {
         fun create(context: Context): AppDatabase =
-            Room.databaseBuilder(context, AppDatabase::class.java, "multi_apps.db").build()
+            Room.databaseBuilder(context, AppDatabase::class.java, "multi_apps.db").addMigrations(MIGRATION_1_2).build()
     }
 }

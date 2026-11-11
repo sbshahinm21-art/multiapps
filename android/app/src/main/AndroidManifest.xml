@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <!-- Lets the app list installed apps that have a launcher icon (to choose what to clone). -->
     <queries>
@@ -35,6 +36,69 @@
 
         <receiver
             android:name=".update.InstallReceiver"
+            android:exported="false" />
+
+        <!-- ===== Work-profile clone engine ===== -->
+        <receiver
+            android:name=".engine.ProfileAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+                <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".engine.GetProvisioningModeActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:theme="@style/Theme.MultiApps.Invisible">
+            <intent-filter>
+                <action android:name="android.app.action.GET_PROVISIONING_MODE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".engine.PolicyComplianceActivity"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:theme="@style/Theme.MultiApps.Invisible">
+            <intent-filter>
+                <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".engine.ProvisioningSuccessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.MultiApps.Invisible">
+            <intent-filter>
+                <action android:name="android.app.action.PROVISIONING_SUCCESSFUL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Enabled only inside the work profile (see ProfileSetup). -->
+        <activity
+            android:name=".engine.ProfileCommandActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.MultiApps.Invisible">
+            <intent-filter>
+                <action android:name="com.multiapps.app.action.PROFILE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <receiver
+            android:name=".engine.UninstallResultReceiver"
             android:exported="false" />
 
         <!-- WorkManager initializes itself through androidx.startup (default). -->

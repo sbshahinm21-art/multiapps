@@ -37,6 +37,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.multiapps.app.BuildConfig
 import com.multiapps.app.backup.BackupCrypto
+import com.multiapps.app.engine.EngineStatus
+import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.engineStatus
+import com.multiapps.app.engine.engineStatusText
+import com.multiapps.app.engine.rememberProfileCommand
+import com.multiapps.app.engine.rememberProfileSetup
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.multiapps.app.ui.BackTopBar
 import com.multiapps.app.ui.SectionCard
 import com.multiapps.app.ui.appContainer
@@ -81,6 +90,8 @@ fun SettingsScreen(onBack: () -> Unit) {
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            EngineCard()
+
             SectionCard("Updates") {
                 val text = when (val s = updateState) {
                     is UpdateState.Checking -> "Checking…"
@@ -214,5 +225,33 @@ fun SettingsScreen(onBack: () -> Unit) {
             },
             dismissButton = { TextButton(enabled = !backupBusy, onClick = { backupMode = null; backupPassword = ""; backupPassword2 = "" }) { Text("Cancel") } },
         )
+    }
+}
+
+/** Shows the clone engine status and lets the user set it up or test it. */
+@Composable
+fun EngineCard() {
+    val context = LocalContext.current
+    var tick by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { tick++ }
+    val status = remember(tick) { engineStatus(context) }
+    var msg by remember { mutableStateOf<String?>(null) }
+    val command = rememberProfileCommand { r ->
+        msg = if (r.ok) "Clone engine is ready." else r.message
+        tick++
+    }
+    val setup = rememberProfileSetup { created ->
+        msg = if (created) "Work profile created. Wait a few seconds, then tap “Check engine”." else "Setup was cancelled or not allowed on this phone."
+        tick++
+    }
+    SectionCard("Clone engine") {
+        Text(engineStatusText(status), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        msg?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        when (status) {
+            EngineStatus.NOT_SET_UP -> Button(onClick = { msg = null; setup() }) { Text("Set up clone engine") }
+            EngineStatus.WAITING, EngineStatus.READY ->
+                OutlinedButton(onClick = { msg = null; command(WorkProfile.commandIntent(WorkProfile.CMD_PING)) }) { Text("Check engine") }
+            else -> {}
+        }
     }
 }
