@@ -4,6 +4,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.CrossProfileApps
 import android.content.pm.LauncherApps
 import android.os.Build
 import android.os.Process
@@ -51,10 +52,18 @@ object WorkProfile {
             .putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, admin(context))
             .putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_ENCRYPTION, true)
 
-    /** The other profile of this phone (the work profile), if there is one. */
+    /**
+     * The work profile that Multi Apps manages, if it exists.
+     * Uses CrossProfileApps, which only lists profiles where Multi Apps itself is installed. This skips
+     * other kinds of profiles that Android 14/15 phones have (app cloning / "Dual apps", Private Space),
+     * which UserManager.userProfiles also returns.
+     */
     fun profileUser(context: Context): UserHandle? {
-        val um = context.getSystemService(UserManager::class.java)
-        return um.userProfiles.firstOrNull { it != Process.myUserHandle() }
+        if (Build.VERSION.SDK_INT < 28) return null
+        return try {
+            context.getSystemService(CrossProfileApps::class.java).targetUserProfiles
+                .firstOrNull { it != Process.myUserHandle() }
+        } catch (e: Exception) { null }
     }
 
     /** True when work apps are paused by the user (quick settings "Work apps" toggle). */

@@ -31,9 +31,9 @@ fun engineStatus(context: Context): EngineStatus {
 fun engineStatusText(s: EngineStatus): String = when (s) {
     EngineStatus.UNSUPPORTED -> "Clones need Android 9 or newer."
     EngineStatus.NOT_SET_UP -> "Not set up yet. Android will create a separate, private space (a “work profile”) where your clones run with their own data."
-    EngineStatus.WAITING -> "A work profile exists. Tap “Check engine” to confirm Multi Apps can use it."
+    EngineStatus.WAITING -> "The Multi Apps work profile was created. Tap “Check engine” to finish."
     EngineStatus.READY -> "Ready. Each app can have one clone in the Multi Apps work profile."
-    EngineStatus.BLOCKED -> "This phone does not allow a new work profile right now (for example, another work profile already exists, or the phone maker blocks it)."
+    EngineStatus.BLOCKED -> "This phone does not allow a new work profile right now. Usually another app (for example Island, Shelter or a work app) already owns the work profile. Remove it in that app, then come back."
 }
 
 /** Result of a command sent to the copy of Multi Apps inside the work profile. */

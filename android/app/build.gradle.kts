@@ -18,8 +18,8 @@ android {
         minSdk = 26
         targetSdk = 35
         // Enter exactly these numbers in the Release Center when you upload this APK.
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.1.1"
         buildConfigField("String", "API_BASE", "\"https://multi-apps.sbshahinm21.workers.dev\"")
     }
 
