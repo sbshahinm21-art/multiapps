@@ -65,7 +65,7 @@ object ProxyTester {
             head.append(b.toChar())
             if (head.length > 16 * 1024) throw IOException("Proxy sent an invalid answer")
         }
-        val code = head.substringBefore("\r\n").split(" ").getOrNull(1)?.toIntOrNull() ?: throw IOException("Proxy sent an invalid answer")
+        val code = head.toString().substringBefore("\r\n").split(" ").getOrNull(1)?.toIntOrNull() ?: throw IOException("Proxy sent an invalid answer")
         if (code == 407) throw IOException("Wrong proxy username or password")
         if (code !in 200..299) throw IOException("Proxy refused the connection (HTTP $code)")
     }
