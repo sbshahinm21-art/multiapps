@@ -40,6 +40,7 @@ import com.multiapps.app.backup.BackupCrypto
 import com.multiapps.app.engine.EngineStatus
 import com.multiapps.app.engine.WorkProfile
 import com.multiapps.app.engine.engineStatus
+import com.multiapps.app.engine.engineDetails
 import com.multiapps.app.engine.engineStatusText
 import com.multiapps.app.engine.rememberProfileCommand
 import com.multiapps.app.engine.rememberProfileSetup
@@ -244,14 +245,24 @@ fun EngineCard() {
         msg = if (created) "Work profile created. Wait a few seconds, then tap “Check engine”." else "Setup was cancelled or not allowed on this phone."
         tick++
     }
+    var showDetails by remember { mutableStateOf(false) }
     SectionCard("Clone engine") {
         Text(engineStatusText(status), color = MaterialTheme.colorScheme.onSurfaceVariant)
         msg?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         when (status) {
             EngineStatus.NOT_SET_UP -> Button(onClick = { msg = null; setup() }) { Text("Set up clone engine") }
-            EngineStatus.WAITING, EngineStatus.READY ->
+            EngineStatus.WAITING, EngineStatus.READY -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = { msg = null; command(WorkProfile.commandIntent(WorkProfile.CMD_PING)) }) { Text("Check engine") }
+                OutlinedButton(onClick = {
+                    msg = WorkProfile.restartEngine(context) ?: "Engine restarted in the work profile. Come back here and tap “Check engine”."
+                }) { Text("Restart engine") }
+            }
             else -> {}
+        }
+        TextButton(onClick = { showDetails = !showDetails; tick++ }) { Text(if (showDetails) "Hide engine details" else "Engine details") }
+        if (showDetails) {
+            Text(remember(tick) { engineDetails(context) }, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

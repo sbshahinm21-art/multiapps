@@ -23,27 +23,51 @@ class ProfileAdminReceiver : DeviceAdminReceiver() {
     }
 }
 
-/** Runs inside the new work profile once Android has created it. Safe to call more than once. */
+/**
+ * Runs inside the Multi Apps work profile. Safe to call any number of times: it runs after setup,
+ * every time the profile copy of the app starts, after app updates and after the phone restarts,
+ * so a step that failed once is retried automatically.
+ */
 object ProfileSetup {
     fun finish(context: Context) {
         val dpm = WorkProfile.dpm(context)
         if (!dpm.isProfileOwnerApp(context.packageName)) return
         val admin = WorkProfile.admin(context)
-        dpm.setProfileName(admin, "Multi Apps")
-        // Let the main app's commands reach the copy of Multi Apps inside this profile.
-        val filter = IntentFilter(WorkProfile.ACTION_COMMAND).apply { addCategory(Intent.CATEGORY_DEFAULT) }
-        dpm.addCrossProfileIntentFilter(admin, filter, DevicePolicyManager.FLAG_PARENT_CAN_ACCESS_MANAGED)
         val pm = context.packageManager
-        pm.setComponentEnabledSetting(
-            ComponentName(context, ProfileCommandActivity::class.java),
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP,
-        )
-        // Hide the extra "Multi Apps" icon in the work tab: everything is controlled from the main app.
-        pm.setComponentEnabledSetting(
-            ComponentName(context, MainActivity::class.java),
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP,
-        )
-        dpm.setProfileEnabled(admin)
+        // Each step is independent: one failing must not stop the others.
+        runCatching { dpm.setProfileName(admin, "Multi Apps") }
+        runCatching {
+            // Route 1: the main app's command intents are forwarded into this profile.
+            val filter = IntentFilter(WorkProfile.ACTION_COMMAND).apply { addCategory(Intent.CATEGORY_DEFAULT) }
+            dpm.addCrossProfileIntentFilter(admin, filter, DevicePolicyManager.FLAG_PARENT_CAN_ACCESS_MANAGED)
+        }
+        runCatching {
+            // Route 2 (Android 11+): "Connected work & personal apps". Lets the main app start the
+            // command screen here directly, after the user allows it once.
+            if (Build.VERSION.SDK_INT >= 30) dpm.setCrossProfilePackages(admin, setOf(context.packageName))
+        }
+        runCatching {
+            pm.setComponentEnabledSetting(
+                ComponentName(context, ProfileCommandActivity::class.java),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP,
+            )
+        }
+        runCatching {
+            // Keep the work-tab "Multi Apps" icon: it shows the engine status and lets the main app
+            // restart the engine (CrossProfileApps.startMainActivity needs a launcher screen).
+            pm.setComponentEnabledSetting(
+                ComponentName(context, MainActivity::class.java),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP,
+            )
+        }
+        runCatching { dpm.setProfileEnabled(admin) }
+    }
+}
+
+/** Re-runs the profile setup after the app is updated or the phone restarts (inside the profile only). */
+class ProfileRepairReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        ProfileSetup.finish(context)
     }
 }
 

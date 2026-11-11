@@ -5,6 +5,7 @@ import android.content.Context
 import com.multiapps.app.backup.BackupManager
 import com.multiapps.app.data.AppDatabase
 import com.multiapps.app.data.Prefs
+import com.multiapps.app.engine.ProfileSetup
 import com.multiapps.app.engine.WorkProfile
 import com.multiapps.app.net.Api
 import com.multiapps.app.net.RemoteConfigRepo
@@ -33,7 +34,11 @@ class MultiAppsApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         inWorkProfile = WorkProfile.isRunningInManagedProfile(this)
-        if (inWorkProfile) return // the profile copy only answers engine commands
+        if (inWorkProfile) {
+            // The profile copy only answers engine commands. Repair its setup on every start.
+            ProfileSetup.finish(this)
+            return
+        }
         container.prefs.launchCount = container.prefs.launchCount + 1
         UpdateWorker.createChannel(this)
         UpdateWorker.schedule(this, container.remoteConfig.config.value.checkIntervalHours)

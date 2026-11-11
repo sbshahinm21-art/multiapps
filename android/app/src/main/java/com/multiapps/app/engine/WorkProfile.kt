@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.CrossProfileApps
 import android.content.pm.LauncherApps
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.os.UserHandle
@@ -91,6 +92,31 @@ object WorkProfile {
             null
         } catch (e: Exception) {
             "Could not open the clone: ${e.message}"
+        }
+    }
+
+    /** Route 1: is the command intent forwarded into the work profile? */
+    fun intentRouteAvailable(context: Context): Boolean =
+        context.packageManager.queryIntentActivities(commandIntent(CMD_PING), PackageManager.MATCH_DEFAULT_ONLY).isNotEmpty()
+
+    /** Route 2 (Android 11+): "Connected work & personal apps" allowed for Multi Apps. */
+    fun connectedAppsAllowed(context: Context): Boolean =
+        Build.VERSION.SDK_INT >= 30 && runCatching { context.getSystemService(CrossProfileApps::class.java).canInteractAcrossProfiles() }.getOrDefault(false)
+
+    /** Route 2 can be turned on by the user (the profile copy has allowed it). */
+    fun connectedAppsCanRequest(context: Context): Boolean =
+        Build.VERSION.SDK_INT >= 30 && runCatching { context.getSystemService(CrossProfileApps::class.java).canRequestInteractAcrossProfiles() }.getOrDefault(false)
+
+    /** Opens the Multi Apps copy inside the profile, which re-runs its setup. Returns an error or null. */
+    fun restartEngine(context: Context): String? {
+        val user = profileUser(context) ?: return "The work profile was not found."
+        if (isPaused(context)) return "Work apps are paused. Turn on “Work apps” in quick settings, then try again."
+        return try {
+            context.getSystemService(CrossProfileApps::class.java)
+                .startMainActivity(ComponentName(context, com.multiapps.app.MainActivity::class.java), user)
+            null
+        } catch (e: Exception) {
+            "Could not start the engine in the work profile (${e.javaClass.simpleName}). Open “Multi Apps” from the Work tab once, then try again."
         }
     }
 

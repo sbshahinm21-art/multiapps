@@ -26,6 +26,7 @@ import com.multiapps.app.ui.screens.SettingsScreen
 import com.multiapps.app.ui.screens.SupportScreen
 import com.multiapps.app.ui.screens.TicketScreen
 import com.multiapps.app.ui.screens.UpdateGate
+import com.multiapps.app.ui.screens.EngineInProfileScreen
 import com.multiapps.app.ui.theme.MultiAppsTheme
 import com.multiapps.app.update.UpdateWorker
 import kotlinx.coroutines.launch
@@ -36,7 +37,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val c = (application as MultiAppsApp).container
+        val app = application as MultiAppsApp
+        if (app.inWorkProfile) {
+            // This is the hidden engine copy inside the work profile (opened from the Work tab or by "Restart engine").
+            setContent { MultiAppsTheme { Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { EngineInProfileScreen { finish() } } } }
+            return
+        }
+        val c = app.container
 
         if (Build.VERSION.SDK_INT >= 33) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
 
