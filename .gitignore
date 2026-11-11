@@ -1,0 +1,13 @@
+node_modules/
+.wrangler/
+.dev.vars
+**/build/
+android/.gradle/
+android/local.properties
+*.jks
+*.keystore
+KEYSTORE_BASE64.txt
+GITHUB-SECRETS.txt
+.idea/
+*.iml
+.DS_Store

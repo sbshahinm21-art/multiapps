@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive icon foreground: a white "M" inside the 108dp canvas (safe zone 66dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36,72V36h7.5l10.5,15 10.5,-15H72v36h-8.5V50.5L54,63.5 44.5,50.5V72z" />
+</vector>

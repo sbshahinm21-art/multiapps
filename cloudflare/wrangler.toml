@@ -1,0 +1,36 @@
+# Cloudflare Worker for Multi Apps (API + admin dashboard + APK downloads)
+name = "multi-apps"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Admin dashboard files, served at /admin/. The Worker runs first so it can add security headers.
+[assets]
+directory = "./assets"
+binding = "ASSETS"
+run_worker_first = true
+
+# Database. Replace database_id with the id printed by:  npx wrangler d1 create multi-apps-db
+[[d1_databases]]
+binding = "DB"
+database_name = "multi-apps-db"
+database_id = "PASTE-YOUR-DATABASE-ID-HERE"
+migrations_dir = "migrations"
+
+# APK files and screenshots. Create with:  npx wrangler r2 bucket create multi-apps-files
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "multi-apps-files"
+
+[vars]
+# Address of your public download website on Cloudflare Pages (visiting the Worker root redirects there).
+PUBLIC_SITE_URL = ""
+# Many mobile users share one IP (carrier NAT). Raise this if users report "Too many requests".
+RATE_LIMIT_SCALE = "3"
+CORS_ORIGINS = "*"
+MAX_APK_MB = "100"
+
+# Secret (never put it in this file):  npx wrangler secret put SETUP_TOKEN
+# It is only needed once, to create the first admin account at /admin/.
+
+[observability]
+enabled = true

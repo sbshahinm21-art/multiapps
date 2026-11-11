@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multi Apps — Run multiple accounts on one phone</title>
+  <meta name="description" content="Download Multi Apps for Android. Run separate clones of your apps, each with its own data and optional proxy.">
+  <meta property="og:title" content="Multi Apps for Android">
+  <meta property="og:description" content="Run separate clones of your apps, each with its own data and optional proxy.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="config.js" defer></script>
+  <script src="site.js" defer></script>
+</head>
+<body>
+  <header class="nav">
+    <div class="wrap row">
+      <a class="brand" href="#top"><span class="logo">M</span><span data-bind="appName">Multi Apps</span></a>
+      <nav><a href="#features">Features</a><a href="#screenshots">Screenshots</a><a href="#changelog">Changelog</a><a href="#install">Install</a></nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <div class="hero-text">
+        <span class="pill">Android 8.0 and newer</span>
+        <h1 data-bind="tagline">Run multiple accounts of your favorite apps on one phone.</h1>
+        <p class="lead" data-bind="description"></p>
+        <div class="cta">
+          <a class="btn big" id="download-btn" href="#" aria-disabled="true">Loading…</a>
+          <div class="meta" id="download-meta"></div>
+        </div>
+      </div>
+      <div class="phone" aria-hidden="true">
+        <div class="phone-screen">
+          <div class="ph-top"><b>Multi Apps</b><span class="dot"></span></div>
+          <div class="ph-grid">
+            <div class="ph-app"><i class="c1"></i><span>Work</span></div>
+            <div class="ph-app"><i class="c2"></i><span>Personal</span></div>
+            <div class="ph-app"><i class="c3"></i><span>Shop</span></div>
+            <div class="ph-app"><i class="c4"></i><span>Clone 4</span></div>
+            <div class="ph-app"><i class="c5"></i><span>Clone 5</span></div>
+            <div class="ph-app add"><i>+</i><span>Add</span></div>
+          </div>
+          <div class="ph-card"><b>Proxy</b><span>Per clone · SOCKS5 / HTTP</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="wrap section">
+      <h2>Features</h2>
+      <div class="features" id="features-list"></div>
+    </section>
+
+    <section id="screenshots" class="wrap section">
+      <h2>Screenshots</h2>
+      <div class="shots" id="shots"><p class="muted">Screenshots are coming soon.</p></div>
+    </section>
+
+    <section id="changelog" class="wrap section">
+      <h2>Changelog</h2>
+      <div id="changes"><p class="muted">Loading…</p></div>
+    </section>
+
+    <section id="install" class="wrap section">
+      <h2>How to install</h2>
+      <ol class="steps">
+        <li><b>Download the APK</b> with the button above.</li>
+        <li><b>Allow installs</b> — when Android asks, tap <i>Settings</i> and turn on <i>Allow from this source</i> for your browser.</li>
+        <li><b>Install</b> — open the downloaded file and tap <i>Install</i>.</li>
+        <li><b>Updates</b> arrive inside the app. You do not need to come back here.</li>
+      </ol>
+      <p class="muted">Check the file: the SHA-256 shown under the download button must match the file you downloaded.</p>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <span>© <span id="year"></span> <span data-bind="appName">Multi Apps</span></span>
+    <span id="support-line"></span>
+  </footer>
+  <div class="lightbox hidden" id="lightbox"><img alt=""><p></p></div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "multi-apps-cloudflare",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi Apps backend for Cloudflare Workers + D1 + R2",
+  "scripts": {
+    "db:init": "wrangler d1 migrations apply multi-apps-db --remote",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
