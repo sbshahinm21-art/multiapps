@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.multiapps.app.data.CloneEntity
 import com.multiapps.app.engine.EngineStatus
 import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.NO_ROUTE
 import com.multiapps.app.engine.engineStatus
 import com.multiapps.app.engine.rememberProfileCommand
 import com.multiapps.app.ui.BackTopBar
@@ -129,7 +130,11 @@ fun AddCloneScreen(onBack: () -> Unit, onCreated: () -> Unit) {
                 }
             },
             confirmButton = {
-                Button(enabled = !saving && pendingClone == null, onClick = {
+                if (error == NO_ROUTE) Button(onClick = {
+                    error = WorkProfile.restartEngine(context)
+                    if (error == null) { picked = null; onCreated() }
+                }) { Text("Open engine") }
+                else Button(enabled = !saving && pendingClone == null, onClick = {
                     saving = true; error = null
                     scope.launch {
                         val count = c.db.clones().countFor(app.packageName)

@@ -238,7 +238,7 @@ fun EngineCard() {
     val status = remember(tick) { engineStatus(context) }
     var msg by remember { mutableStateOf<String?>(null) }
     val command = rememberProfileCommand { r ->
-        msg = if (r.ok) "Clone engine is ready." else r.message
+        msg = if (r.ok) "Clone engine is ready. Commands from this app work on your phone." else r.message
         tick++
     }
     val setup = rememberProfileSetup { created ->
@@ -252,10 +252,10 @@ fun EngineCard() {
         when (status) {
             EngineStatus.NOT_SET_UP -> Button(onClick = { msg = null; setup() }) { Text("Set up clone engine") }
             EngineStatus.WAITING, EngineStatus.READY -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = { msg = null; command(WorkProfile.commandIntent(WorkProfile.CMD_PING)) }) { Text("Check engine") }
+                OutlinedButton(onClick = { msg = null; command(WorkProfile.commandIntent(WorkProfile.CMD_PING)) }) { Text("Test") }
                 OutlinedButton(onClick = {
-                    msg = WorkProfile.restartEngine(context) ?: "Engine restarted in the work profile. Come back here and tap “Check engine”."
-                }) { Text("Restart engine") }
+                    msg = WorkProfile.restartEngine(context)
+                }) { Text("Open engine") }
             }
             else -> {}
         }

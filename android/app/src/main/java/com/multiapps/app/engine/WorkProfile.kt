@@ -120,6 +120,17 @@ object WorkProfile {
         }
     }
 
+    /** User apps installed in the Multi Apps work profile (label by package name). Seen from the main app. */
+    fun profileApps(context: Context): Map<String, String>? {
+        val user = profileUser(context) ?: return null
+        return try {
+            context.getSystemService(LauncherApps::class.java).getActivityList(null, user)
+                .filter { it.applicationInfo.packageName != context.packageName &&
+                    (it.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 }
+                .associate { it.applicationInfo.packageName to it.label.toString() }
+        } catch (e: Exception) { null } // unknown: callers must not treat this as "no clones"
+    }
+
     fun commandIntent(cmd: String, packageName: String? = null): Intent =
         Intent(ACTION_COMMAND).addCategory(Intent.CATEGORY_DEFAULT).putExtra(EXTRA_CMD, cmd).apply {
             if (packageName != null) putExtra(EXTRA_PACKAGE, packageName)

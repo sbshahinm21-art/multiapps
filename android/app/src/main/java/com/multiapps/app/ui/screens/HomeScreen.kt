@@ -40,6 +40,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -55,6 +58,7 @@ import com.multiapps.app.data.CloneEntity
 import com.multiapps.app.data.ProxyEntity
 import com.multiapps.app.engine.EngineStatus
 import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.NO_ROUTE
 import com.multiapps.app.engine.engineStatus
 import com.multiapps.app.engine.rememberProfileCommand
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,6 +87,22 @@ fun HomeScreen(
     var resumeTick by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumeTick++ }
     val engine = remember(resumeTick) { engineStatus(context) }
+    // Clones added inside the engine screen (route 3) are picked up here; removed ones disappear.
+    LaunchedEffect(resumeTick) {
+        if (engine != EngineStatus.READY || WorkProfile.isPaused(context)) return@LaunchedEffect
+        val inProfile = withContext(Dispatchers.IO) { WorkProfile.profileApps(context) } ?: return@LaunchedEffect
+        val dao = c.db.clones()
+        val known = dao.all()
+        inProfile.forEach { (pkg, label) ->
+            if (known.none { it.packageName == pkg && it.engine == CloneEntity.ENGINE_WORK_PROFILE }) {
+                val old = known.firstOrNull { it.packageName == pkg && it.engine == CloneEntity.ENGINE_NONE }
+                if (old != null) dao.update(old.copy(engine = CloneEntity.ENGINE_WORK_PROFILE))
+                else dao.insert(CloneEntity(packageName = pkg, appLabel = label, name = label,
+                    colorIndex = known.size % com.multiapps.app.ui.theme.CloneColors.size, engine = CloneEntity.ENGINE_WORK_PROFILE))
+            }
+        }
+        known.filter { it.engine == CloneEntity.ENGINE_WORK_PROFILE && it.packageName !in inProfile.keys }.forEach { dao.delete(it) }
+    }
 
     Scaffold(
         topBar = {
@@ -229,7 +249,10 @@ private fun LaunchDialog(clone: CloneEntity, proxies: List<ProxyEntity>, onDismi
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp)) }
             }
         },
-        confirmButton = { Button(enabled = !busy, onClick = { open() }) { Text(if (busy) "Installing…" else "Open") } },
+        confirmButton = {
+            if (message == NO_ROUTE) Button(onClick = { message = WorkProfile.restartEngine(context); if (message == null) onDismiss() }) { Text("Open engine") }
+            else Button(enabled = !busy, onClick = { open() }) { Text(if (busy) "Installing…" else "Open") }
+        },
         dismissButton = { TextButton(onClick = onSettings) { Text("Clone settings") } },
     )
 }

@@ -29,38 +29,49 @@ class ProfileAdminReceiver : DeviceAdminReceiver() {
  * so a step that failed once is retried automatically.
  */
 object ProfileSetup {
+    /** Result of each step of the last run, shown on the engine screen inside the profile. */
+    @Volatile var lastReport: List<String> = emptyList()
+        private set
+
+    private inline fun step(report: MutableList<String>, name: String, block: () -> Unit) {
+        report += try { block(); "OK  $name" } catch (e: Throwable) { "ERR $name: ${e.javaClass.simpleName}: ${e.message}" }
+    }
+
     fun finish(context: Context) {
         val dpm = WorkProfile.dpm(context)
-        if (!dpm.isProfileOwnerApp(context.packageName)) return
+        val report = mutableListOf<String>()
+        if (!dpm.isProfileOwnerApp(context.packageName)) {
+            lastReport = listOf("Multi Apps is not the owner of this profile")
+            return
+        }
         val admin = WorkProfile.admin(context)
         val pm = context.packageManager
-        // Each step is independent: one failing must not stop the others.
-        runCatching { dpm.setProfileName(admin, "Multi Apps") }
-        runCatching {
-            // Route 1: the main app's command intents are forwarded into this profile.
+        step(report, "profile name") { dpm.setProfileName(admin, "Multi Apps") }
+        step(report, "route 1: cross-profile intent filter") {
             val filter = IntentFilter(WorkProfile.ACTION_COMMAND).apply { addCategory(Intent.CATEGORY_DEFAULT) }
             dpm.addCrossProfileIntentFilter(admin, filter, DevicePolicyManager.FLAG_PARENT_CAN_ACCESS_MANAGED)
         }
-        runCatching {
-            // Route 2 (Android 11+): "Connected work & personal apps". Lets the main app start the
-            // command screen here directly, after the user allows it once.
-            if (Build.VERSION.SDK_INT >= 30) dpm.setCrossProfilePackages(admin, setOf(context.packageName))
+        if (Build.VERSION.SDK_INT >= 30) {
+            step(report, "route 2: allow connected apps") { dpm.setCrossProfilePackages(admin, setOf(context.packageName)) }
+            report += "    allowed list now: ${runCatching { dpm.getCrossProfilePackages(admin).joinToString() }.getOrElse { "error " + it.message }}"
         }
-        runCatching {
+        step(report, "enable command screen") {
             pm.setComponentEnabledSetting(
                 ComponentName(context, ProfileCommandActivity::class.java),
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP,
             )
         }
-        runCatching {
-            // Keep the work-tab "Multi Apps" icon: it shows the engine status and lets the main app
-            // restart the engine (CrossProfileApps.startMainActivity needs a launcher screen).
+        step(report, "enable engine screen") {
             pm.setComponentEnabledSetting(
                 ComponentName(context, MainActivity::class.java),
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP,
             )
         }
-        runCatching { dpm.setProfileEnabled(admin) }
+        step(report, "enable profile") { dpm.setProfileEnabled(admin) }
+        report += "Command screen resolves here: " + runCatching {
+            pm.queryIntentActivities(WorkProfile.commandIntent(WorkProfile.CMD_PING), PackageManager.MATCH_DEFAULT_ONLY).size.toString()
+        }.getOrElse { "error " + it.message }
+        lastReport = report
     }
 }
 

@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.multiapps.app.data.CloneEntity
 import com.multiapps.app.engine.WorkProfile
+import com.multiapps.app.engine.NO_ROUTE
 import com.multiapps.app.engine.rememberProfileCommand
 import androidx.compose.ui.platform.LocalContext
 import com.multiapps.app.ui.BackTopBar
@@ -134,7 +135,10 @@ fun CloneSettingsScreen(cloneId: Long, onBack: () -> Unit, onManageProxies: () -
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
-            deleteError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            deleteError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+                if (it == NO_ROUTE) OutlinedButton(onClick = { deleteError = WorkProfile.restartEngine(context) }) { Text("Open engine") }
+            }
             OutlinedButton(
                 onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),

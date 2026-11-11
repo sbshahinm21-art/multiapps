@@ -28,8 +28,9 @@ fun engineStatus(context: Context): EngineStatus {
     if (!WorkProfile.isSupportedVersion) return EngineStatus.UNSUPPORTED
     val hasProfile = WorkProfile.profileUser(context) != null
     return when {
-        hasProfile && prefs.engineReady -> EngineStatus.READY
-        hasProfile -> EngineStatus.WAITING // created, or another app's work profile; a test command decides
+        // The profile copy of Multi Apps exists. Even if no command route works on this phone,
+        // clones can be added in the engine screen inside the profile (route 3) and opened from here.
+        hasProfile -> EngineStatus.READY
         WorkProfile.canCreateProfile(context) -> EngineStatus.NOT_SET_UP
         else -> EngineStatus.BLOCKED
     }
@@ -39,9 +40,12 @@ fun engineStatusText(s: EngineStatus): String = when (s) {
     EngineStatus.UNSUPPORTED -> "Clones need Android 9 or newer."
     EngineStatus.NOT_SET_UP -> "Not set up yet. Android will create a separate, private space (a “work profile”) where your clones run with their own data."
     EngineStatus.WAITING -> "The Multi Apps work profile was created. Tap “Check engine” to finish."
-    EngineStatus.READY -> "Ready. Each app can have one clone in the Multi Apps work profile."
+    EngineStatus.READY -> "Ready. Each app can have one clone in the Multi Apps work profile. If adding a clone from here does not work on your phone, tap “Open engine” and add it there."
     EngineStatus.BLOCKED -> "This phone does not allow a new work profile right now. Usually another app (for example Island, Shelter or a work app) already owns the work profile. Remove it in that app, then come back."
 }
+
+/** Shown when the phone blocks both command routes; the user can still use the engine screen. */
+const val NO_ROUTE = "This phone does not let Multi Apps send commands to the work profile. Tap “Open engine” and do it there — it takes one tap."
 
 /** Result of a command sent to the copy of Multi Apps inside the work profile. */
 data class CommandResult(val ok: Boolean, val message: String)
@@ -64,8 +68,8 @@ fun rememberProfileCommand(onResult: (CommandResult) -> Unit): (Intent) -> Unit 
     val pending = remember { arrayOfNulls<Intent>(1) }
 
     fun viaConnectedApps(intent: Intent) {
-        if (Build.VERSION.SDK_INT < 30 || activity == null) {
-            callback(CommandResult(false, "The work profile is not reachable on this Android version. Tap “Restart engine”, then try again."))
+        if (Build.VERSION.SDK_INT < 30 || activity == null || !WorkProfile.connectedAppsAllowed(context)) {
+            callback(CommandResult(false, NO_ROUTE))
             return
         }
         val user = WorkProfile.profileUser(context)
@@ -128,7 +132,7 @@ fun rememberProfileCommand(onResult: (CommandResult) -> Unit): (Intent) -> Unit 
                     try { consent.launch(context.getSystemService(CrossProfileApps::class.java).createRequestInteractAcrossProfilesIntent()) }
                     catch (e: Exception) { pending[0] = null; callback(CommandResult(false, "Could not open the permission screen: ${e.message}")) }
                 }
-                else -> callback(CommandResult(false, "The work profile is not answering yet. Tap “Restart engine”, wait a few seconds, then “Check engine”."))
+                else -> callback(CommandResult(false, NO_ROUTE))
             }
         }
     }
